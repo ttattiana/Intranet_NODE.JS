@@ -1,0 +1,62 @@
+/* ---------------------------------------------------- */
+/* 🛑 MODIFICACIONES GLOBALES PARA COLOR DE TEXTO (ALTA ESPECIFICIDAD) 🛑 */
+/* ---------------------------------------------------- */
+
+/* 1. Fuerza el color negro para el contenedor principal (#root) y todos sus hijos */
+/* Esto asegura que el texto herede el color correcto, anulando estilos de bajo nivel. */
+#root, #root * {
+    color: #000000;
+}
+
+/* 2. Fuerza el color negro para los encabezados (th) y celdas (td) de la tabla */
+/* El !important anula cualquier regla de Bootstrap o plantilla que los ponga en blanco. */
+th, td {
+    color: #000000 !important;
+}
+
+/* ---------------------------------------------------- */
+/* 🛑 ESTILOS ORIGINALES LIMPIOS 🛑 */
+/* ---------------------------------------------------- */
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #000000;
+}
