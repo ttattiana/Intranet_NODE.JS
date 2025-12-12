@@ -1,109 +1,166 @@
-// frontend/src/Components/ToolLoanForm.jsx
-// Este sería el componente abierto por la URL del QR
-import React, { useState, useEffect } from 'react';
+// frontend/src/components/RegistroActivo.jsx (Formulario SIMPLIFICADO de Registro de Activo)
+
+import React, { useState } from 'react';
 import axios from 'axios';
-import ToolReports from './ToolHistory';
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = "http://192.168.0.14:8000/api"; 
 
-const ToolLoanForm = () => {
-    // Extraer toolId de la URL (simulación de app móvil)
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialToolId = urlParams.get('toolId') || '';
+const RegistroActivo = () => {
+    // Campos del Inventario Maestro (SOLO INFORMACIÓN ESTÁTICA)
+    const [toolId, setToolId] = useState('');
+    const [name, setName] = useState('');
+    const [serialNumber, setSerialNumber] = useState('');
+    const [acquisitionDate, setAcquisitionDate] = useState('');
+    // Eliminado: locationFija, ya que es semi-dinámico
 
-    const [toolData, setToolData] = useState({
-        toolId: initialToolId,
-        action: 'Préstamo', // 'Préstamo' o 'Devolución'
-        condition: 'Buen estado', // Estado de la herramienta
-        photoUrl: '', // URL de la foto subida (simulación)
-        technicianEmail: localStorage.getItem('userEmail') || '', // Obtener email del técnico logueado
-    });
     const [message, setMessage] = useState('');
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        // Asegurar que la fecha y hora se registran al cargar el formulario
-        setToolData(prev => ({
-            ...prev,
-            dateTime: new Date().toISOString().slice(0, 19).replace('T', ' '), // Formato YYYY-MM-DD HH:MM:SS
-        }));
-    }, []);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setToolData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handlePhotoUpload = (e) => {
-        // 🛑 Lógica REAL de subir imagen: Aquí se subiría el archivo a un servidor
-        // (como Cloudinary o tu propio backend) y se obtendría la URL.
-        console.log("Simulando subida de foto...");
-        setToolData(prev => ({
-            ...prev,
-            photoUrl: `https://tu-storage.com/images/${toolData.toolId}-${Date.now()}.jpg`
-        }));
-        alert('Foto simulada subida.');
-    };
-
+    // =======================================================
+    // ✅ FUNCIÓN PARA REGISTRAR EL NUEVO ACTIVO
+    // =======================================================
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage('');
+        setIsSuccess(false);
+        setLoading(true);
 
-        // 🛑 Lógica para enviar el registro al backend
+        const newToolData = {
+            tool_id: toolId.toUpperCase(),
+            name,
+            serial_number: serialNumber,
+            acquisition_date: acquisitionDate,
+            // location_fija no se envía si se considera dinámico
+        };
+
         try {
-            const response = await axios.post(`${API_BASE}/tools/register-action`, toolData);
-            setMessage(`✅ Registro exitoso: ${response.data.message}`);
-        } catch (error) {
-            setMessage(`❌ Error al registrar: ${error.response?.data?.error || 'Error de conexión.'}`);
+            // Endpoint para guardar en la tabla tools_master
+            const response = await axios.post(`${API_BASE}/inventory/register-master-tool`, newToolData);
+            
+            setMessage(`✅ ${response.data.message || 'Activo registrado con éxito en el Inventario Maestro.'}`);
+            setIsSuccess(true);
+            
+            // Limpiar formulario al éxito
+            setToolId('');
+            setName('');
+            setSerialNumber('');
+            setAcquisitionDate('');
+
+        } catch (err) {
+            console.error('Error al registrar el activo:', err);
+            const errorMessage = err.response?.data?.error || 'Error de red al intentar registrar el activo.';
+            setMessage(`❌ Fallo en el registro: ${errorMessage}`);
+            setIsSuccess(false);
+        } finally {
+            setLoading(false);
         }
     };
-    
-    // Estilos muy básicos para simular una vista móvil
-    const containerStyle = { maxWidth: '400px', margin: '20px auto', padding: '20px', backgroundColor: '#f0f0f0', borderRadius: '15px' };
+    // =======================================================
+
+    const styles = {
+        container: { 
+            maxWidth: '600px', 
+            margin: '30px auto', 
+            padding: '40px', 
+            backgroundColor: 'white', 
+            borderRadius: '12px', 
+            boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            border: '1px solid #e0e0e0'
+        },
+        title: { 
+            color: '#dc3545',
+            borderBottom: '3px solid #dc3545', 
+            paddingBottom: '10px', 
+            marginBottom: '30px' 
+        },
+        form: { 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '20px' 
+        },
+        formGroup: { 
+            display: 'flex', 
+            flexDirection: 'column' 
+        },
+        label: { 
+            marginBottom: '5px', 
+            fontWeight: '600', 
+            color: '#333' 
+        },
+        input: { 
+            padding: '12px', 
+            border: '1px solid #ccc', 
+            borderRadius: '5px', 
+            fontSize: '1em'
+        },
+        button: { 
+            padding: '15px', 
+            backgroundColor: loading ? '#6c757d' : '#28a745', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '5px', 
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 'bold',
+            fontSize: '1.1em',
+            transition: 'background-color 0.2s'
+        },
+        messageStyle: (success) => ({
+            marginTop: '25px', 
+            padding: '15px', 
+            backgroundColor: success ? '#d4edda' : '#f8d7da',
+            color: success ? '#155724' : '#721c24',
+            fontWeight: 'bold', 
+            borderRadius: '5px',
+            border: success ? '1px solid #c3e6cb' : '1px solid #f5c6cb'
+        })
+    };
 
     return (
-        <div style={containerStyle}>
-            <h2>Registro de Herramienta - **{toolData.action}**</h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={styles.container}>
+            <h2 style={styles.title}>➕ Registro Manual de Nuevo Activo</h2>
+            <p style={{marginBottom: '25px', color: '#555'}}>Defina las propiedades estáticas de una herramienta nueva. El movimiento será registrado por el módulo de Préstamos/Devoluciones.</p>
+
+            <form onSubmit={handleSubmit} style={styles.form}>
                 
-                {/* Código de la Herramienta (debe ser fijo) */}
-                <label>Serial / Código:</label>
-                <input type="text" value={toolData.toolId} readOnly style={{ padding: '10px', backgroundColor: '#ccc' }} />
-
-                {/* Fecha y Hora de Entrega/Préstamo */}
-                <label>Fecha y Hora del Registro:</label>
-                <input type="text" value={toolData.dateTime || 'Cargando...'} readOnly style={{ padding: '10px', backgroundColor: '#ccc' }} />
-
-                {/* Acción (Préstamo o Devolución) */}
-                <label>Acción:</label>
-                <select name="action" value={toolData.action} onChange={handleChange} style={{ padding: '10px' }}>
-                    <option value="Préstamo">Préstamo</option>
-                    <option value="Devolución">Devolución</option>
-                </select>
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>ID de Herramienta (Único para el QR)</label>
+                    <input type="text" value={toolId} onChange={(e) => setToolId(e.target.value)} 
+                           style={styles.input} placeholder="Ej: TALADRO-001 (DEBE COINCIDIR CON EL QR)" required />
+                </div>
                 
-                {/* Estado de la Herramienta */}
-                <label>Estado de la Herramienta:</label>
-                <select name="condition" value={toolData.condition} onChange={handleChange} style={{ padding: '10px' }}>
-                    <option value="Buen estado">Buen estado</option>
-                    <option value="Daño menor">Daño menor</option>
-                    <option value="Dañada">Dañada</option>
-                </select>
-
-                {/* Fotografía de la Herramienta */}
-                <label>Fotografía (Evidencia):</label>
-                <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ padding: '10px' }} />
-                {toolData.photoUrl && <p style={{ fontSize: '12px', color: 'green' }}>Foto subida (URL simulada): {toolData.photoUrl.substring(0, 30)}...</p>}
-
-                {/* Técnico Solicitante */}
-                <label>Técnico (Email):</label>
-                <input type="email" name="technicianEmail" value={toolData.technicianEmail} readOnly style={{ padding: '10px', backgroundColor: '#ccc' }} />
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>Nombre/Descripción</label>
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} 
+                           style={styles.input} placeholder="Ej: Taladro Percutor Inalámbrico" required />
+                </div>
                 
-                <button type="submit" style={{ padding: '15px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', marginTop: '20px' }}>
-                    Registrar Acción
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>Número de Serie (Opcional)</label>
+                    <input type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} 
+                           style={styles.input} placeholder="Ej: AS-123456" />
+                </div>
+                
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>Fecha de Adquisición</label>
+                    <input type="date" value={acquisitionDate} onChange={(e) => setAcquisitionDate(e.target.value)} 
+                           style={styles.input} required />
+                </div>
+
+                {/* 💡 Se elimina el campo de Ubicación Fija/Almacén */}
+
+                <button type="submit" style={styles.button} disabled={loading}>
+                    {loading ? 'Registrando...' : 'Guardar Activo'}
                 </button>
             </form>
-            {message && <p style={{ marginTop: '15px', fontWeight: 'bold', color: message.startsWith('✅') ? 'green' : 'red' }}>{message}</p>}
+
+            {message && (
+                <p style={styles.messageStyle(isSuccess)}>
+                    {message}
+                </p>
+            )}
         </div>
     );
 };
 
-export default ToolReports;
+export default RegistroActivo;

@@ -15,9 +15,14 @@ const crypto = require('crypto');  
 const app = express();
 const PORT = 8000; 
 
-// Configurar CORS para permitir la conexión desde React (5173)
+// =================================================================
+// 🚨 CORRECCIÓN 1: Configurar CORS para permitir la conexión desde la IP de red
+// =================================================================
 app.use(cors({
-    origin: 'http://localhost:5173' 
+    origin: [
+        'http://localhost:5173',           // Acceso local
+        'http://192.168.0.14:5173'       // CRÍTICO: Acceso desde el celular/red
+    ]
 }));
 
 // Middleware para manejar datos JSON en las peticiones
@@ -44,7 +49,7 @@ const sendOTPByEmail = async (email, otpCode) => {
     return false; // Falso porque el envío real está deshabilitado
 };
 
-// 4. CONEXIÓN A LA DB (Sección Corregida y Añadida la tabla tool_history)
+// 4. CONEXIÓN A LA DB (Sección Corregida y Añadida la columna technician_name)
 const db = new sqlite3.Database('./database.sqlite', (err) => {
     if (err) {
         console.error('Error abriendo la base de datos:', err.message);
@@ -86,21 +91,29 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
                     console.log("✅ Columna 'role' añadida a la tabla 'users'.");
                 }
             });
+            
+            // =================================================================
+            // ✅ CORRECCIÓN 3: Creación de la tabla tool_history
+            // =================================================================
+            db.run(`CREATE TABLE IF NOT EXISTS tool_history (id INTEGER PRIMARY KEY AUTOINCREMENT, tool_id TEXT NOT NULL, technician_email TEXT NOT NULL, technician_name TEXT, action TEXT NOT NULL, condition TEXT, photo_url TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`, (createErr) => {
+                if (createErr) {
+                    console.error('Error al crear tabla tool_history:', createErr.message);
+                } else {
+                    console.log('✅ Tabla tool_history creada (o ya existe).');
+                }
+            });
             
-            // 🛑 NUEVA SENTENCIA CREATE TABLE para el Historial de Herramientas
-            db.run(`CREATE TABLE IF NOT EXISTS tool_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                tool_id TEXT NOT NULL, 
-                technician_email TEXT NOT NULL, 
-                action TEXT NOT NULL,         -- Préstamo o Devolución
-                condition TEXT,               -- Buen estado, Daño menor, Dañada
-                photo_url TEXT,               -- URL de la fotografía
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP 
-            )`, (createErr) => {
-                if (createErr) {
-                    console.error('Error al crear tabla tool_history:', createErr.message);
+            // =================================================================
+            // ✅ CORRECCIÓN CRÍTICA 4: Añadir columna technician_name (por si la tabla ya existía)
+            // =================================================================
+            db.run("ALTER TABLE tool_history ADD COLUMN technician_name TEXT", (alterErr) => {
+                if (alterErr) {
+                    // Ignoramos el error si la columna ya existe
+                    if (!alterErr.message.includes("duplicate column name")) {
+                        console.error("Error al intentar añadir la columna technician_name:", alterErr.message);
+                    }
                 } else {
-                    console.log('✅ Tabla tool_history creada (o ya existe).');
+                    console.log("✅ Columna 'technician_name' añadida exitosamente a tool_history.");
                 }
             });
             
@@ -239,32 +252,82 @@ app.post('/api/admin/create-user', async (req, res) => {
 
 // ⚙️ RUTA 5: REGISTRO DE ACCIÓN DE HERRAMIENTAS (Préstamo/Devolución)
 app.post('/api/tools/register-action', (req, res) => {
-    const { toolId, technicianEmail, action, condition, photoUrl } = req.body;
-    
-    // Validaciones básicas
-    if (!toolId || !technicianEmail || !action) {
-        return res.status(400).json({ error: "Faltan campos obligatorios (toolId, technicianEmail, action)." });
-    }
+    // Aseguramos que se recibe technicianName del frontend
+    const { toolId, technicianEmail, action, condition, photoUrl, technicianName } = req.body;
+    
+    // Validaciones básicas
+    if (!toolId || !technicianEmail || !action) {
+        return res.status(400).json({ error: "Faltan campos obligatorios (toolId, technicianEmail, action)." });
+    }
 
-    // GUARDAR EL REGISTRO EN LA TABLA TOOL_HISTORY
-    db.run(
-        "INSERT INTO tool_history (tool_id, technician_email, action, condition, photo_url) VALUES (?, ?, ?, ?, ?)",
-        [toolId, technicianEmail, action, condition, photoUrl],
-        function(insertErr) {
-            if (insertErr) {
-                console.error("SQLite insert error:", insertErr.message);
-                return res.status(500).json({ error: 'Error al registrar la acción de la herramienta.' });
-            }
-            res.status(201).json({ 
-                message: `Acción '${action}' registrada para ${toolId} por ${technicianEmail}.`,
-                historyId: this.lastID
-            });
+    // GUARDAR EL REGISTRO EN LA TABLA TOOL_HISTORY
+    // Corregido: Usamos 'technician_name' en la consulta SQL y en los parámetros.
+    db.run(
+        "INSERT INTO tool_history (tool_id, technician_email, technician_name, action, condition, photo_url) VALUES (?, ?, ?, ?, ?, ?)",
+        [toolId, technicianEmail, technicianName, action, condition, photoUrl],
+        function(insertErr) {
+            if (insertErr) {
+                console.error("SQLite insert error:", insertErr.message);
+                return res.status(500).json({ error: 'Error al registrar la acción de la herramienta.' });
+            }
+            res.status(201).json({ 
+                message: `Acción '${action}' registrada para ${toolId} por ${technicianName}.`, // Usamos NAME en la respuesta
+                historyId: this.lastID
+            });
+        }
+    );
+});
+
+// -------------------------------------------------------------
+// 🆕 RUTA 6: OBTENER TODO EL HISTORIAL DE HERRAMIENTAS
+// -------------------------------------------------------------
+app.get('/api/tools/history', (req, res) => {
+    // Consulta todos los registros de la tabla tool_history, ordenados por fecha descendente
+    db.all("SELECT * FROM tool_history ORDER BY timestamp DESC", [], (err, rows) => {
+        if (err) {
+            console.error("SQLite select error:", err.message);
+            // Devolvemos un error 500 si la consulta falla
+            return res.status(500).json({ error: 'Error al obtener el historial de herramientas.' });
+        }
+        
+        // Devolvemos los registros obtenidos
+        res.json({ 
+            message: 'Historial obtenido exitosamente.',
+            history: rows // 'rows' contendrá la lista de todos los movimientos
+        });
+    });
+});
+
+
+// -------------------------------------------------------------
+// 🆕 RUTA 7: ELIMINAR REGISTRO DE MOVIMIENTO POR ID
+// -------------------------------------------------------------
+app.delete('/api/tools/delete-action/:id', (req, res) => {
+    const { id } = req.params; 
+    
+    // Usamos el nombre de tabla confirmado: tool_history
+    const sql = `DELETE FROM tool_history WHERE id = ?`;
+
+    db.run(sql, id, function(err) {
+        if (err) {
+            console.error('Error al intentar eliminar el registro:', err.message);
+            return res.status(500).json({ error: 'Error al eliminar el registro de la base de datos.' });
         }
-    );
+        
+        if (this.changes === 0) {
+            return res.status(404).json({ error: `Movimiento con ID ${id} no encontrado.` });
+        }
+
+        console.log(`Registro de movimiento ${id} eliminado con éxito.`);
+        res.json({ message: `Movimiento ${id} eliminado con éxito.`, deletedId: id });
+    });
 });
 
 
 // 6. Iniciar el servidor
-app.listen(PORT, () => {
-    console.log(`🚀 Backend corriendo en http://localhost:${PORT}`);
+// =================================================================
+// 🚨 CORRECCIÓN 2: Se usa '0.0.0.0' para escuchar en la IP de red
+// =================================================================
+app.listen(PORT, '0.0.0.0', () => { 
+    console.log(`🚀 Backend corriendo y accesible desde la red en: http://192.168.0.14:${PORT}`);
 });
