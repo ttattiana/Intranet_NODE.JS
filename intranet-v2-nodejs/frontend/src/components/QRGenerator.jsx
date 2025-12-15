@@ -9,7 +9,7 @@ const QRGenerator = () => {
   const [qrUrl, setQrUrl] = useState('');
 
   // URL que se abrirá al escanear el QR
-  const BASE_URL_FORM = 'http://192.168.0.14:5173/dashboard/tool-loan-form';
+  const BASE_URL_FORM = 'http://192.168.0.29:5173/dashboard/tool-loan-form';
 
   const handleGenerateQR = () => {
     if (toolId) {
