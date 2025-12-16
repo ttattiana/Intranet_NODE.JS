@@ -45,9 +45,9 @@ const Home = ({ isEmbedded }) => {
           )}
 
           {/* 🛑 Contenido principal del Empleado (siempre visible si hay usuario) */}
-          <div style={{ padding: isEmbedded ? 0 : 20, border: isEmbedded ? 'none' : '1px solid #ccc', borderRadius: '8px', backgroundColor: isEmbedded ? 'transparent' : 'white' }}>
+          <div style={{ padding: isEmbedded ? 0 : 20, border: isEmbedded ? 'none' : '1px solid #ccc', borderRadius: '8px', backgroundColor: isEmbedded ? 'transparent' : 'white', color: 'black', }}>
             <h3 style={{ marginTop: isEmbedded ? 0 : '10px' }}>Resumen de la Sesión</h3>
-            <p>Estás conectada como **{user.username}** ({user.email}).</p>
+            <p>Estás conectad@ como **{user.username}** ({user.email}).</p>
             <p>Tu rol asignado es: **{user.role}**.</p>
             <p>Aquí irá el contenido y las herramientas específicas del empleado.</p>
           </div>

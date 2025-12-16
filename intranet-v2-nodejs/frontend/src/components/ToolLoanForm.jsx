@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 // URL base de la API
-const API_BASE = "http://192.168.0.29:8000/api";
+const API_BASE = "http://192.168.2.6:8000/api";
+
 
 // --- LÓGICA DEL TÉCNICO LOGUEADO ---
 
