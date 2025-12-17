@@ -42,7 +42,7 @@ function NotificationBell({ rol = 'RRHH' }) {
     cargar();
     const id = setInterval(cargar, 30000); // refresca cada 30s
     return () => clearInterval(id);
-  }, []);
+  }, [rol]);
 
   const marcarLeida = async (id) => {
     try {
@@ -89,12 +89,15 @@ function NotificationBell({ rol = 'RRHH' }) {
               padding: '8px 10px',
               borderBottom: '1px solid #eee',
               fontWeight: 'bold',
+              color: 'black',
             }}
           >
             Notificaciones ({total})
           </div>
           {total === 0 ? (
-            <div style={{ padding: 10 }}>No tienes notificaciones nuevas.</div>
+            <div style={{ padding: 10, color: 'black' }}>
+              No tienes notificaciones nuevas.
+            </div>
           ) : (
             notis.map((n) => (
               <div
@@ -102,9 +105,12 @@ function NotificationBell({ rol = 'RRHH' }) {
                 style={{
                   padding: '8px 10px',
                   borderBottom: '1px solid #f1f1f1',
+                  color: 'black',
                 }}
               >
-                <div style={{ fontWeight: 'bold' }}>{n.titulo}</div>
+                <div style={{ fontWeight: 'bold', color: 'black' }}>
+                  {n.titulo}
+                </div>
                 <div style={{ color: '#555', marginBottom: 6 }}>
                   {n.mensaje}
                 </div>
@@ -133,3 +139,4 @@ function NotificationBell({ rol = 'RRHH' }) {
 }
 
 export default NotificationBell;
+
